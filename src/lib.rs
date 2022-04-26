@@ -1,34 +1,116 @@
+//! WEB系の開発でよく使う画像のリサイズや変換を行うライブラリです。
 use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
-use image::{DynamicImage,};
+use image::{ColorType, DynamicImage, ImageEncoder};
+use image::codecs::png::PngEncoder;
 use image::imageops::FilterType;
 use webp::Encoder;
+use sha3::{Digest, Sha3_256};
 
+/// 画像の構造体
 #[derive(Default, Debug)]
 pub struct ImageFile {
+    /// 拡張子
     pub ext: String,
+    /// 保存URL
     pub url: String,
+    /// hash付ファイル名
     pub hash: String,
+    /// ファイル名
     pub name: String,
+    /// 画像横幅
     pub width: u32,
+    /// 画像高さ
     pub height: u32,
+    /// ファイルサイズ
     pub size: u32,
+    /// ファイルフォーマット
     pub mine: String,
 }
 
-use sha3::{Digest, Sha3_256};
+/// 画像変換処理
+pub struct ImageConverter {
+    image: DynamicImage,
+}
 
-pub fn str_to_hash(value: &str) -> String {
+impl ImageConverter {
+    pub fn new(input: &Path) -> Result<ImageConverter, String> {
+        let img = image::open(input);
+        if img.is_err() {
+            return Err(img.unwrap_err().to_string());
+        }
+        Ok(ImageConverter {
+            image: img.unwrap()
+        })
+    }
+    pub fn from_image(image: DynamicImage) -> ImageConverter {
+        ImageConverter {
+            image
+        }
+    }
+    /// 最大横幅を指定し、設定値以下にリサイズ
+    pub fn resize(self, target_size: u32, output: &Path) -> Result<DynamicImage, ()> {
+        let img = self.image;
+        let width = img.width() as u32;
+        let height = img.height() as u32;
+
+        if width > target_size || height > target_size {
+            let (target_width, target_height) =
+                if width > height {
+                    let ratio: f32 = target_size as f32 / width as f32;
+                    (target_size, (height as f32 * ratio) as u32)
+                } else {
+                    let ratio: f32 = target_size as f32 / height as f32;
+                    ((width as f32 * ratio) as u32, target_size)
+                };
+            let img = img.resize(target_width, target_height, FilterType::Lanczos3);
+            img.save(output).unwrap();
+            return Ok(img);
+        } else {
+            img.save(output).unwrap();
+        }
+        return Ok(img.clone());
+    }
+    /// webp書き出し
+    pub fn write_webp(self, output: &Path) -> Result<(), ()> {
+        let img = self.image;
+        let enc = Encoder::from_image(&img);
+        if enc.is_err() {
+            return Err(());
+        }
+        let buf = enc.unwrap().encode(75.0).to_vec();
+        let webp = File::create(output).unwrap();
+        BufWriter::new(webp).write(&buf).unwrap();
+        Ok(())
+    }
+    /// png書き出し
+    pub fn write_png(self, output: &Path) -> Result<(), ()> {
+        let img = self.image;
+        let rgb8 = img.to_rgb8().to_vec();
+        let mut buf = Vec::new();
+        let enc = PngEncoder::new(&mut buf).write_image(&rgb8, img.width(), img.height(), ColorType::Rgb8);
+        if enc.is_err() {
+            return Err(());
+        }
+        let webp = File::create(output).unwrap();
+        BufWriter::new(webp).write(&buf).unwrap();
+        Ok(())
+    }
+}
+
+
+fn str_to_hash(value: &str) -> String {
     let mut hasher = Sha3_256::new();
     hasher.update(value.as_bytes());
     let result = hasher.finalize();
     return format!("{:x}", result);
 }
 
-pub fn process(input: &Path, size: u32, name: &str) -> Result<ImageFile, ()> {
+/// リサイズとwebp変換を一括で実行するメソッド
+pub fn resize_and_webp(input: &Path, size: u32, name: &str) -> Result<ImageFile, ()> {
     let path = input.parent().unwrap().to_str().unwrap();
     let stem = input.file_stem().unwrap().to_str().unwrap();
     let ext = input.extension().unwrap().to_str().unwrap().to_lowercase();
@@ -39,10 +121,9 @@ pub fn process(input: &Path, size: u32, name: &str) -> Result<ImageFile, ()> {
     let output_origin = Path::new(path).join(format!("{}.{}", hash, ext));
     let output_webp = Path::new(path).join(format!("{}.webp", hash));
 
-    let dynamic_image = resize(size, input, output_origin.as_path()).unwrap();
+    let dynamic_image = ImageConverter::new(input).unwrap().resize(size, output_origin.as_path()).unwrap();
     let metadata = fs::metadata(output_origin.clone()).unwrap();
-    convert_webp(dynamic_image.clone(), output_webp.as_path());
-
+    let _ = ImageConverter::from_image(dynamic_image.clone()).write_webp(output_webp.as_path());
     let file = ImageFile {
         ext: ext.to_lowercase(),
         url: output_origin.to_str().unwrap_or_default().to_string(),
@@ -57,32 +138,3 @@ pub fn process(input: &Path, size: u32, name: &str) -> Result<ImageFile, ()> {
 }
 
 
-fn resize(target_size: u32, input: &Path, output: &Path) -> Result<DynamicImage, ()> {
-    let img = image::open(input).unwrap();
-    let width = img.width() as u32;
-    let height = img.height() as u32;
-
-    if width > target_size || height > target_size {
-        let (target_width, target_height) =
-            if width > height {
-                let ratio: f32 = target_size as f32 / width as f32;
-                (target_size, (height as f32 * ratio) as u32)
-            } else {
-                let ratio: f32 = target_size as f32 / height as f32;
-                ((width as f32 * ratio) as u32, target_size)
-            };
-        let img = img.resize(target_width, target_height, FilterType::Lanczos3);
-        img.save(output).unwrap();
-        return Ok(img);
-    } else {
-        img.save(output).unwrap();
-    }
-    return Ok(img);
-}
-
-fn convert_webp(img: DynamicImage, output: &Path) {
-    let enc = Encoder::from_image(&img).unwrap();
-    let buf = enc.encode(75.0).to_vec();
-    let webp = File::create(output).unwrap();
-    BufWriter::new(webp).write(&buf).unwrap();
-}
