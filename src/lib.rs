@@ -32,22 +32,22 @@ pub struct ImageFile {
 }
 
 /// 画像変換処理
-pub struct ImageConverter {
+pub struct ImageConvert {
     image: DynamicImage,
 }
 
-impl ImageConverter {
-    pub fn new(input: &Path) -> Result<ImageConverter, String> {
+impl ImageConvert {
+    pub fn new(input: &Path) -> Result<ImageConvert, String> {
         let img = image::open(input);
         if img.is_err() {
             return Err(img.unwrap_err().to_string());
         }
-        Ok(ImageConverter {
+        Ok(ImageConvert {
             image: img.unwrap()
         })
     }
-    pub fn from_image(image: DynamicImage) -> ImageConverter {
-        ImageConverter {
+    pub fn from_image(image: DynamicImage) -> ImageConvert {
+        ImageConvert {
             image
         }
     }
@@ -121,9 +121,9 @@ pub fn resize_and_webp(input: &Path, size: u32, name: &str) -> Result<ImageFile,
     let output_origin = Path::new(path).join(format!("{}.{}", hash, ext));
     let output_webp = Path::new(path).join(format!("{}.webp", hash));
 
-    let dynamic_image = ImageConverter::new(input).unwrap().resize(size, output_origin.as_path()).unwrap();
+    let dynamic_image = ImageConvert::new(input).unwrap().resize(size, output_origin.as_path()).unwrap();
     let metadata = fs::metadata(output_origin.clone()).unwrap();
-    let _ = ImageConverter::from_image(dynamic_image.clone()).write_webp(output_webp.as_path());
+    let _ = ImageConvert::from_image(dynamic_image.clone()).write_webp(output_webp.as_path());
     let file = ImageFile {
         ext: ext.to_lowercase(),
         url: output_origin.to_str().unwrap_or_default().to_string(),
