@@ -135,7 +135,7 @@ pub fn resize_and_webp(input: &Path, size: u32, name: &str) -> Result<(ImageFile
     };
     let _ = ImageConvert::from_image(dynamic_image.clone()).write_webp(output_webp.as_path());
     let webp = ImageFile {
-        ext: ext.to_lowercase(),
+        ext: "webp".to_string(),
         url: output_webp.to_str().unwrap_or_default().to_string(),
         hash: hash.to_string(),
         name: format!("{}.{}", stem, "webp"),
