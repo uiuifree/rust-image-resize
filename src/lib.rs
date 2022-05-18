@@ -26,7 +26,7 @@ pub struct ImageFile {
     /// 画像高さ
     pub height: u32,
     /// ファイルサイズ
-    pub size: u32,
+    pub size: u64,
     /// ファイルフォーマット
     pub mine: String,
 }
@@ -131,7 +131,7 @@ pub fn resize_and_webp(input: &Path, size: u32, name: &str) -> Result<ImageFile,
         name: format!("{}.{}", stem, ext),
         width: dynamic_image.width(),
         height: dynamic_image.height(),
-        size: metadata.size() as u32,
+        size: metadata.size() as u64,
         mine: "".to_string(),
     };
     return Ok(file);
