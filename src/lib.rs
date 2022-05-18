@@ -110,7 +110,7 @@ fn str_to_hash(value: &str) -> String {
 }
 
 /// リサイズとwebp変換を一括で実行するメソッド
-pub fn resize_and_webp(input: &Path, size: u32, name: &str) -> Result<ImageFile, ()> {
+pub fn resize_and_webp(input: &Path, size: u32, name: &str) -> Result<(ImageFile,ImageFile), ()> {
     let path = input.parent().unwrap().to_str().unwrap();
     let stem = input.file_stem().unwrap().to_str().unwrap();
     let ext = input.extension().unwrap().to_str().unwrap().to_lowercase();
@@ -123,8 +123,7 @@ pub fn resize_and_webp(input: &Path, size: u32, name: &str) -> Result<ImageFile,
 
     let dynamic_image = ImageConvert::new(input).unwrap().resize(size, output_origin.as_path()).unwrap();
     let metadata = fs::metadata(output_origin.clone()).unwrap();
-    let _ = ImageConvert::from_image(dynamic_image.clone()).write_webp(output_webp.as_path());
-    let file = ImageFile {
+    let base = ImageFile {
         ext: ext.to_lowercase(),
         url: output_origin.to_str().unwrap_or_default().to_string(),
         hash: hash.to_string(),
@@ -134,7 +133,18 @@ pub fn resize_and_webp(input: &Path, size: u32, name: &str) -> Result<ImageFile,
         size: metadata.size() as u64,
         mine: "".to_string(),
     };
-    return Ok(file);
+    let _ = ImageConvert::from_image(dynamic_image.clone()).write_webp(output_webp.as_path());
+    let webp = ImageFile {
+        ext: ext.to_lowercase(),
+        url: output_webp.to_str().unwrap_or_default().to_string(),
+        hash: hash.to_string(),
+        name: format!("{}.{}", stem, "webp"),
+        width: dynamic_image.width(),
+        height: dynamic_image.height(),
+        size: metadata.size() as u64,
+        mine: "".to_string(),
+    };
+    return Ok((base,webp));
 }
 
 impl ImageFile {
