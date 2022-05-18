@@ -1,5 +1,5 @@
 use std::path::Path;
-use image_convert::{ImageConvert, ImageFile, resize_and_webp};
+use uiuifree_image_convert::{ImageConvert, ImageFile, resize_and_webp};
 
 fn main() {
     let output1200 = Path::new("./storage/example.jpg");
