@@ -1,9 +1,10 @@
 use std::path::Path;
-use image_convert::{ImageConvert, resize_and_webp};
+use image_convert::{ImageConvert, ImageFile, resize_and_webp};
 
 fn main() {
     let output1200 = Path::new("./storage/example.jpg");
     let file = resize_and_webp(output1200, 1200, "large").unwrap();
+    let _ = ImageFile::new(output1200);
 
     let _ = ImageConvert::new(Path::new(&file.url)).unwrap().write_png(Path::new("./storage/test.png"));
     let _ = resize_and_webp(Path::new(&file.url), 750, "medium");

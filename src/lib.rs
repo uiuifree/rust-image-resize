@@ -137,4 +137,24 @@ pub fn resize_and_webp(input: &Path, size: u32, name: &str) -> Result<ImageFile,
     return Ok(file);
 }
 
-
+impl ImageFile {
+    pub fn new(input: &Path) -> Result<ImageFile, ()> {
+        let path = input.parent().unwrap().to_str().unwrap();
+        let stem = input.file_stem().unwrap().to_str().unwrap();
+        let ext = input.extension().unwrap().to_str().unwrap().to_lowercase();
+        let uuid = str_to_hash(&path.to_string());
+        let hash = format!("{}_{}", stem, uuid);
+        let dynamic_image = ImageConvert::new(input).unwrap().image;
+        let metadata = fs::metadata(input.clone()).unwrap();
+        return Ok(ImageFile {
+            ext: ext.to_lowercase(),
+            url: input.to_str().unwrap_or_default().to_string(),
+            hash: hash.to_string(),
+            name: format!("{}.{}", stem, ext),
+            width: dynamic_image.width(),
+            height: dynamic_image.height(),
+            size: metadata.size() as u32,
+            mine: "".to_string(),
+        });
+    }
+}
