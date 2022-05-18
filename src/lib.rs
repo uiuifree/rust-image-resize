@@ -153,7 +153,7 @@ impl ImageFile {
             name: format!("{}.{}", stem, ext),
             width: dynamic_image.width(),
             height: dynamic_image.height(),
-            size: metadata.size() as u32,
+            size: metadata.size() as u64,
             mine: "".to_string(),
         });
     }
